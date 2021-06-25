@@ -1,6 +1,21 @@
+function mQPL = calculateQPL(data, interval, target)
 % Calculate the Quantum Price Level (QPL)
 % Author: Bohui WU (Bowen)
 % Adapted from: Raymond S. T. LEE's QPL2019.mql
+%
+% Parameters:
+%   data: A table containing the field "Open" or "Close" in 
+%       time desending order (the latest trading day should
+%       be the first entry). The field "Return" is optional
+%       as it can be calculated, be it would be extremely
+%       slow as it needs to be calculated everytime the
+%       function is called.
+%   interval: The interval used to estimate the wavefunction.
+%       Suggested value: 2048. In general, it should be 
+%       greater than 500 trading days.
+%   target: The target in which the calculation of QPLs are 
+%       based on. Should provide the name of the field.
+%       For example, "Open" or "Close". By default: "Close"
 %
 % References:
 %   [1] R. S. T. Lee, Quantum Finance: Intelligent Forecast 
@@ -8,7 +23,9 @@
 %       2020. doi: 10.1007/978-981-32-9796-8.
 %
 %
-function mQPL = calculateQPL(data, interval)
+assert(interval <= size(data, 1), "Not enough data.");
+
+
 % =======================================================
 % Step 1: Calculate all the K values (energy levels)
 %           from k0 to k20 using the formula 5.17 in
@@ -21,9 +38,21 @@ end
 
 
 % =======================================================
-% Step 2: Calculate the mean (mu) and standard 
-%           deviation (sigma) of period returns
-returns = data{:, 'Return'};
+% Step 2: Calculate the returns, its mean (mu) and  
+%           standard deviation (sigma) of period
+%           returns
+
+% Calculate the returns
+if ~isfield(table2struct(data(1, :)), "Return")
+    returns = zeros(size(data, 1)-1, 1);
+    n = min(size(data, 1)-1, interval);
+    for i=1:n
+        returns(i) = data{i, "Close"} / data{i+1, "Close"};
+    end
+else
+    returns = data{1:interval, "Return"};
+end
+
 mu = mean(returns);
 sigma = std(returns);  % N - 1 is not needed
 % The width of each slice of returns
@@ -37,9 +66,9 @@ dr = (3*sigma) / 50;
 %   In other words, the number of occurrences
 Q = zeros(100, 1);
 % Loop over the maxRno to get the distribution
-%   where maxRno is (interval-2), eg. 2048-2.
-%   Purpose: to exclude the boundary cases
-maxRno = interval - 2;
+%   where maxRno is (interval-1), eg. 2048-2.
+%   Purpose: to exclude the boundary case
+maxRno = interval - 1;
 % tQno is used to keep track of the number of
 %   returns found in the selected intervals
 %   (some (r)s may not fit in any interval)
@@ -115,14 +144,18 @@ end
 
 % =======================================================
 % Step 6: Evaluate Quantum Price Levels (QPL)
+if nargin < 3
+    % The target is not specified, use default value
+    target = "Close";
+end
 mQPL = zeros(20*2+1, 2);
-openPrice = data{1, 'Open'};
+price = data{1, target};
 for n=-20:1:20
     mQPL(n+20+1, 1) = n;
     if n >= 0
-        mQPL(n+20+1, 2) = openPrice * NQPR(n+1);
+        mQPL(n+20+1, 2) = price * NQPR(n+1);
     else
-        mQPL(n+20+1, 2) = openPrice / NQPR(abs(n));
+        mQPL(n+20+1, 2) = price / NQPR(abs(n));
     end
 end
 
