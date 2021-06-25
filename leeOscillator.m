@@ -1,5 +1,5 @@
 function z = leeOscillator(x)
-load('leeoscillator.mat');
+load('leeOscillator.mat');
 z = x(:);
 m = size(Z, 2);
 n = length(z);
