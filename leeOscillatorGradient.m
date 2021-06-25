@@ -1,5 +1,5 @@
-function dz = leeoscillatorGradient(x)
-load('leeoscillator.mat');
+function dz = leeOscillatorGradient(x)
+load('leeOscillator.mat');
 dz = x(:);
 m = size(Z, 2);
 n = length(dz);
