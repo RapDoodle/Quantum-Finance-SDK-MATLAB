@@ -50,7 +50,7 @@ Z = zeros((2/stepsize)+1, recordsize);
 
 % Set default values
 if nargin < 1
-    shape = "sigmoid";
+    shape = 'sigmoid';
 end
 if nargin < 2
     saveOpt = false;
@@ -86,7 +86,7 @@ for i=-1:stepsize:1
     idx = idx + 1;
 end
 
-if strcmp(shape, "sigmoid")
+if strcmp(shape, 'sigmoid')
     Z = Z ./ 2 + 0.5;
 end
 
