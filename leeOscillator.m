@@ -2,7 +2,7 @@ function z = leeOscillator(x)
 persistent Z stepsize;
 if isempty(Z) || isempty(stepsize)
     if isfile('leeOscillator.mat')
-        load('leeOscillator.mat');
+        load('leeOscillator.mat', 'Z', 'stepsize');
     else
         error("Please run 'leeOscillatorGen' to generate the oscialltor 'first.");
     end
