@@ -1,5 +1,8 @@
 function z = leeOscillator(x)
-load('leeOscillator.mat');
+persistent Z stepsize;
+if isempty(Z) || isempty(stepsize)
+    load('leeOscillator.mat');
+end
 z = x(:);
 m = size(Z, 2);
 n = length(z);

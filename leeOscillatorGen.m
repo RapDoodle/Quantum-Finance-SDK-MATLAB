@@ -92,8 +92,9 @@ end
 
 if saveOpt
     save('leeOscillator', 'Z', 'stepsize');
+    disp("The generated Lee Oscillator has been saved.");
+    disp("Remember to use the 'clear' command before using.");
 end
-
 
 if plotAct
     figure
