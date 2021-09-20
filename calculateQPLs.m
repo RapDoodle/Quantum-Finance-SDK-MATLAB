@@ -1,10 +1,10 @@
-function mQPL = calculateQPL(data, interval, target)
+function mQPLs = calculateQPLs(data, interval, target, lowerQPL, upperQPL, returnType)
 % Calculate the Quantum Price Level (QPL)
 % Author: Bohui WU (Bowen)
 % Adapted from: Raymond S. T. LEE's QPL2019.mql
 %
 % Parameters:
-%   data: A table containing the field "Open" or "Close" in 
+%   data: A table containing the field 'Open' or 'Close' in 
 %       time desending order (the latest trading day should
 %       be the first entry). The field "Return" is optional
 %       as it can be calculated, be it would be extremely
@@ -15,7 +15,12 @@ function mQPL = calculateQPL(data, interval, target)
 %       greater than 500 trading days.
 %   target: The target in which the calculation of QPLs are 
 %       based on. Should provide the name of the field.
-%       For example, "Open" or "Close". By default: "Close"
+%       For example, 'Open' or 'Close'. By default: 'Close'
+%   lowerQPL: The lowest QPL. By default: -21.
+%   upperQPL: The highest QPL. By default: 21.
+%   returnType: The type of object returned. Can be either
+%       'map' or 'list'. By default: 'map'. 'list' is
+%       recommended for performance benefits.
 %
 % References:
 %   [1] R. S. T. Lee, Quantum Finance: Intelligent Forecast 
@@ -23,15 +28,35 @@ function mQPL = calculateQPL(data, interval, target)
 %       2020. doi: 10.1007/978-981-32-9796-8.
 %
 %
-assert(interval <= size(data, 1), "Not enough data.");
+% =======================================================
+% Step 0: Verify the data and setup the variables
+assert(interval <= size(data, 1), "Not enough of data.");
 
+if ~exist('target', 'var')
+    target = 'Close';
+end
+
+if ~exist('lowerQPL', 'var')
+    lowerQPL = -21;
+end
+
+if ~exist('upperQPL', 'var')
+    upperQPL = 21;
+end
+
+if ~exist('returnTemplate', 'var')
+    returnTemplate = 'map';
+end
+
+numQPLs = abs(lowerQPL) + abs(upperQPL);
+maxQPL = max(abs(lowerQPL), abs(upperQPL));
 
 % =======================================================
 % Step 1: Calculate all the K values (energy levels)
 %           from k0 to k20 using the formula 5.17 in
 %           p98 of [1].
-K = zeros(21, 1);
-for n=1:21
+K = zeros(maxQPL, 1);
+for n=1:maxQPL
     K(n) = ((1.1924 + (33.2383*(n-1)) + (56.2169*(n-1)*(n-1))) / ...
         (1 + 43.6196*(n-1)))^(1/3);
 end
@@ -42,19 +67,20 @@ end
 %           standard deviation (sigma) of period
 %           returns
 
-% Calculate the returns
-if ~isfield(table2struct(data(1, :)), "Return")
+% Calculate the returns (if needed)
+if ~isfield(table2struct(data(1, :)), 'Return')
     returns = zeros(size(data, 1)-1, 1);
     n = min(size(data, 1)-1, interval);
     for i=1:n
-        returns(i) = data{i, "Close"} / data{i+1, "Close"};
+        returns(i) = data{i, 'Close'} / data{i+1, 'Close'};
     end
 else
-    returns = data{1:interval, "Return"};
+    returns = data{1:interval, 'Return'};
 end
 
-mu = mean(returns);
+% mu = mean(returns);
 sigma = std(returns);  % N - 1 is not needed
+
 % The width of each slice of returns
 dr = (3*sigma) / 50;
 
@@ -103,7 +129,7 @@ end
 NQ = Q / tQno;
 
 % Find maxQ and maxQno
-[maxQ, maxQno] = max(NQ);
+[~, maxQno] = max(NQ);
 
 
 % =======================================================
@@ -122,8 +148,8 @@ lambda = abs(...
 % Step 5: Solve for QFSE to determine the first 21
 %   energy levels
 %   wavefunction.
-QFEL = zeros(21, 3);
-for n=1:21
+QFEL = zeros(maxQPL, 3);
+for n=1:maxQPL
     a = (1 / (2*(n-1)+1))^3;
     b = 0;
     c = -1 / (2*(n-1)+1);
@@ -134,9 +160,9 @@ end
 
 % =======================================================
 % Step 6: Evaluate all QPR values
-QPR = zeros(21, 1);
-NQPR = zeros(21, 1);
-for n=1:21
+QPR = zeros(maxQPL, 1);
+NQPR = zeros(maxQPL, 1);
+for n=1:maxQPL
     QPR(n) = QFEL(n) / QFEL(1);
     NQPR(n) = 1 + 0.21*sigma*QPR(n);
 end
@@ -144,20 +170,35 @@ end
 
 % =======================================================
 % Step 6: Evaluate Quantum Price Levels (QPL)
-if nargin < 3
-    % The target is not specified, use default value
-    target = "Close";
-end
-mQPL = zeros(20*2+1, 2);
 price = data{1, target};
-for n=-20:1:20
-    mQPL(n+20+1, 1) = n;
-    if n >= 0
-        mQPL(n+20+1, 2) = price * NQPR(n+1);
-    else
-        mQPL(n+20+1, 2) = price / NQPR(abs(n));
+if strcmp(returnType, 'map')
+    mQPLs = containers.Map();
+    mQPLs('lowerQPL') = lowerQPL;
+    mQPLs('upperQPL') = upperQPL;
+    for n=lowerQPL:1:upperQPL
+        if n > 0
+            mQPLs(string(n)) = price * NQPR(n);
+        elseif n < 0
+            mQPLs(string(n)) = price / NQPR(abs(n));
+        else
+            mQPLs('0') = price;
+        end
     end
+elseif strcmp(returnType, 'list')
+    mQPLs = zeros(numQPLs + 1, 1);
+    index = 1;
+    for n=lowerQPL:1:upperQPL
+        if n > 0
+            mQPLs(index) = price * NQPR(n);
+        elseif n < 0
+            mQPLs(index) = price / NQPR(abs(n));
+        else
+            mQPLs(index) = price;
+        end
+        index = index + 1;
+    end
+else
+    error('Unknown return type.');
 end
-
 end
 
