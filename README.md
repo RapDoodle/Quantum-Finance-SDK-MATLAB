@@ -27,4 +27,4 @@ Please be noted that the repository could be used independently or as a plugin o
 This project is licensed under the GPLv3 license. Hence, the authors provide no warranty under any circumstances. You are using this repository at your own risk.
 
 ## License
-This project is licensed under the GPLv3 license.
+This project is licensed under the MIT license. Copyright (c) 2022 Bohui WU.
